@@ -1,16 +1,36 @@
 from fastapi import FastAPI, Depends
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.auth.base_config import fastapi_users, auth_backend
+from src.auth.models import User
+from src.auth.schemas import UserRead, UserCreate
 from src.database import get_async_session
 from src.schemas import SPictures
-
-from src.models import pictures
 
 
 app = FastAPI(
     title="UPixel"
 )
+
+
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend),
+    prefix="/auth",
+    tags=["Auth"],
+)
+
+app.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate),
+    prefix="/auth",
+    tags=["Auth"],
+)
+
+current_user = fastapi_users.current_user()
+
+
+@app.get("/protected-route")
+def protected_route(user: User = Depends(current_user)):
+    return f"Hello, {user.username}"
   
 
 @app.get("/")
@@ -25,9 +45,7 @@ async def get_user():
 
 @app.get("/pictures/{user_id}")
 async def get_all_user_pictures(user_id: int, session: AsyncSession = Depends(get_async_session)):
-    query = select(pictures).where(pictures.c.id == user_id)
-    result = await session.execute(query)
-    return {"answer": result}
+    return {"answer": "Получить все картинки пользователя"}
 
 
 @app.get("/pictures/{pictures_id}")
